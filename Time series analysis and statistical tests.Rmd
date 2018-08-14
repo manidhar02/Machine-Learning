@@ -1,0 +1,262 @@
+---
+title: "Statistical Data Analysis Assignment 2"
+author: "Manidhar"
+date: "22 May 2018"
+output: html_document
+---
+#TAsk 1: Time Series
+#Importing required libraries
+```{r}
+library(lubridate)
+```
+
+```{r}
+install.packages("ggplot2")
+library(ggplot2)
+```
+
+```{r}
+install.packages("rnoaa")
+library(rnoaa)
+```
+
+```{r}
+install.packages("nycflights13")
+library(nycflights13)
+head(flights)
+```
+
+```{r}
+tz(flights$time_hour)
+flights$time_hour <- force_tz(flights$time_hour,tzone="America/New_York")
+tz(flights$time_hour)
+
+```
+
+```{r}
+flights$sched_dep_datetime <- make_datetime(flights$year,flights$month, flights$day, flights$hour,flights$minute)
+flights$sched_dep_date <-  as_date(flights$sched_dep_datetime)
+head(flights)
+```
+
+```{r}
+min(flights$time_hour)
+max(flights$time_hour)
+```
+
+```{r}
+head(weather)
+weather.jfk <- weather[weather$origin=="JFK",]
+weather.jfk$date <- as_date(weather.jfk$time_hour)
+visibility <- as.data.frame(table(weather.jfk[weather.jfk$visib > 9.999,"date"]))
+```
+
+```{r}
+head(weather)
+```
+#Task 1.1
+```{r}
+options(noaakey="NTkDNrxTrxcpCdxDsqYaKZMaFBYFqGZd")
+library(rnoaa)
+snow_data <- ncdc(datasetid = 'GHCND', 
+                         stationid = 'GHCND:USW00094789', 
+                         startdate = '2013-01-01',
+                         enddate = '2013-12-31',datatypeid = 'SNOW', limit = 1000)$data
+head(snow_data)
+```
+
+#Task 1.2
+```{r}
+snow_data$date <- as_date(snow_data$date)
+ggplot(snow_data,aes(snow_data$date,snow_data$value)) + geom_line()+ggtitle("Time Series of the Snowfall over the given time-period")
+
+```
+
+#Task 1.3
+```{r}
+jfk.data <- flights[flights$origin=="JFK",]
+head(jfk.data)
+```
+
+```{r}
+jfk.date <-as.Date(jfk.data$sched_dep_date)
+jfk.data$dep_delay[is.na(jfk.data$dep_delay)] <-0
+```
+
+```{r}
+aggreg <- aggregate(jfk.data[,"dep_delay"],list(jfk.date),mean)
+aggreg
+```
+#Task 1.4
+```{r}
+ggplot(aggreg,aes(snow_data$value,dep_delay),xlab="Date",ylab="Snow_value")+geom_point()+ggtitle("Snow fall vs Avg Deprture Delay")
+```
+#Task2: Statistical Tests
+```{r}
+install.packages("datasets")
+data("ChickWeight")
+head(ChickWeight)
+```
+#Task 2.1
+```{r}
+summary(ChickWeight)
+chicks_count<- length(unique(ChickWeight$Chick))
+chicks_diets<- length(unique(ChickWeight$Diet))
+chicks_ages<- length(unique(ChickWeight$Time))
+print("Chickens count")
+chicks_count
+print("Diets count")
+chicks_diets
+print("Ages count")
+chicks_ages
+```
+#Task 2.2
+
+```{r}
+chicks_diet1<-subset(ChickWeight,ChickWeight$Diet==c("1"))
+chicks_diet1_age2<-subset(chicks_diet1,chicks_diet1$Time==c("10"))
+chicks_Test_data1<- chicks_diet1_age2[1:10,]
+
+chicks_diet2<-subset(ChickWeight,ChickWeight$Diet==c("2"))
+chicks_diet2_age2<-subset(chicks_diet2,chicks_diet2$Time==c("10"))
+chicks_Test_data2<- chicks_diet2_age2
+
+hist(chicks_Test_data1$weight)
+hist(chicks_Test_data2$weight)
+
+wilcox.test(chicks_Test_data1$weight, chicks_Test_data2$weight, conf.int = TRUE)
+```
+
+```{r}
+t.test(chicks_Test_data1$weight,chicks_Test_data2$weight,paired = FALSE,conf.level =.95)
+```
+#Task 2.3
+```{r}
+chicks_age20= (ChickWeight[ChickWeight$Time=="20",])
+chicks_age21= (ChickWeight[ChickWeight$Time=="21",])
+chicks =rbind(chicks_age20,chicks_age21)
+ggplot(data=chicks, mapping= aes(x=chicks$Diet, y=chicks$weight, fill= chicks$Diet))+geom_bar(position= "dodge",stat="identity")+facet_wrap(~chicks$Time)+ggtitle("Diet VS Weights plot")
+```
+#Task 2.4
+```{r}
+Anova_oneway<- aov(chicks_age21$weight~chicks_age21$Diet)
+summary(Anova_oneway)
+```
+#Task 2.5
+```{r}
+chicks_age10<- ChickWeight[ChickWeight$Time==10,]
+chicks_age20<- ChickWeight[ChickWeight$Time==20,]
+data_twoway<- rbind(chicks_age10,chicks_age20)
+Anova_twoway <- aov(data_twoway$weight~data_twoway$Diet+data_twoway$Time+data_twoway$Diet*data_twoway$Time,data=data_twoway)
+summary(Anova_twoway)
+
+```
+#Task 3: Regression
+```{r}
+install.packages("broom")
+install.packages("modelr")
+install.packages("gapminder")
+install.packages("mosaic")
+install.packages("mosaic")
+library(mosaic)
+library(mosaic)
+library(gapminder)
+library(dplyr)
+
+z<-gapminder
+```
+```{r}
+country_data <- filter(gapminder, country == "Italy")
+reg <- lm(lifeExp ~ year, data = country_data)
+reg
+```
+
+```{r}
+
+plotModel(reg, system = "g")
+```
+
+```{r}
+library(broom)
+country_df <- augment(reg)
+
+```
+
+```{r}
+country_df %>% 
+  ggplot(aes(x = year, y = .resid)) + 
+  geom_hline(yintercept = 0, colour = "blue") +
+  geom_point()
+```
+
+```{r}
+country_df %>% 
+  ggplot(aes(x = .fitted, y = .resid)) + 
+  geom_hline(yintercept = 0, colour = "blue") +
+  geom_point()
+```
+#Linearity
+```{r}
+country_df %>% 
+  ggplot(aes(x = .fitted, y = .resid)) + 
+  geom_hline(yintercept = 0, colour = "red") +
+  geom_point() +
+  geom_smooth(se = FALSE)
+```
+#Normality of error
+```{r}
+country_df %>% 
+ ggplot(aes(sample = .std.resid)) +
+  stat_qq() +
+  geom_abline(colour = "blue")
+```
+#Quality Metrics
+```{r}
+glance(reg)
+```
+#TAsk 3.2
+```{r}
+life_expec <- gapminder %>% filter(year == 2002,continent %in% c("Asia","Europe","Africa"))
+life_mod1 <- lm(lifeExp ~ gdpPercap, data = life_expec_2007)
+plotModel(life_mod1)   
+```
+
+```{r}
+life_mod2 <- update(life_mod1, . ~ . + continent)
+plotModel(life_mod2)
+```
+
+```{r}
+life_mod3 <- update(life_mod2, . ~ . + continent*gdpPercap)
+plotModel(life_mod3)
+```
+
+```{r}
+library(mgcv)
+gam1 <- gam(lifeExp ~ s(gdpPercap), data = life_expec) 
+```
+
+```{r}
+plotModel(gam1)
+plot.gam(gam1)
+```
+
+```{r}
+gam2 <- gam(lifeExp ~ s(gdpPercap) + continent, data = life_expec) 
+plotModel(gam2)
+plot.gam(gam2)
+```
+
+```{r}
+gam3 <- gam(lifeExp ~ s(gdpPercap, by = continent) + continent, data = life_expec) 
+plotModel(gam3)
+plot.gam(gam3)
+```
+
+```{r}
+summary(gam1)
+summary(gam2)
+summary(gam3)
+```
+
+
